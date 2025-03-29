@@ -100,7 +100,7 @@ function App() {
 				Smart Launcher
 			</Text>
 			{/* <LastKey /> */}
-			<GamepadDirection />
+			{/* <GamepadDirection /> */}
 		</>
 	);
 }
