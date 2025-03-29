@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { Image, Rect, Text } from 'react-tela';
+import { use$ } from '@legendapp/state/react';
+import React, { useEffect } from 'react';
+import { Rect, Text } from 'react-tela';
 
+import { direction$, initializeGamepadTracking, lastInput$ } from './hooks/use-last-key';
+import { AppGrid } from './lib/app-grid';
 import { isBrowserDev } from './main';
+import testApps from './test/apps.json';
 
-const HEADER_HEIGHT = 60;
-const SCREEN_WIDTH = 1280;
-const SCREEN_HEIGHT = 720;
-const PADDING_X = 16;
-const PADDING_Y = 16;
-const ICONS_PER_ROW = 10;
-const GAME_SPACE_X = 16;
-const GAME_SPACE_Y = 16;
+export const HEADER_HEIGHT = 60;
+export const SCREEN_WIDTH = 1280;
+export const SCREEN_HEIGHT = 720;
+export const PADDING_X = 16;
 
 export interface GameApplication {
 	name: string
@@ -21,86 +21,99 @@ export interface GameApplication {
 }
 
 export function getTestApplications(): GameApplication[] {
-	const NUM_TEST_APPS = 50;
-	const applications: GameApplication[] = [];
-	for (let i = 1; i <= NUM_TEST_APPS; i++) {
-		applications.push({
-			name: `Test Game ${i}`,
-			version: `${i}.0.0`,
-			id: BigInt(i),
-			icon: 'https://tinfoil.media/ti/01007EF00011E000/512/512',
-			author: `Dev Author ${i}`,
-		});
-	}
-	return applications;
+	return testApps.map((app: any) => ({
+		...app,
+		icon: 'https://tinfoil.media/ti/01007EF00011E000/512/512',
+	}));
+}
+
+export type AppList = GameApplication[] | Switch.Application[];
+
+interface Post {
+	userId: number
+	id: number
+	title: string
+	body: string
 }
 
 function App() {
-	const availableWidth = SCREEN_WIDTH - (2 * PADDING_X);
-	const ICON_SIZE = Math.floor((availableWidth - (GAME_SPACE_X * (ICONS_PER_ROW - 1))) / ICONS_PER_ROW);
+	const appList: AppList = isBrowserDev
+		? getTestApplications().slice(0, 70)
+		: Array.from(Switch.Application).slice(0, 70);
 
-	const appList: GameApplication[] = isBrowserDev
-		? getTestApplications()
-		: Array.from(Switch.Application).map(({ name, version, id, icon, author }) =>
-			({ name, version, id, icon, author }));
+	useEffect(() => {
+		const cleanup = initializeGamepadTracking();
+		return cleanup;
+	}, []);
 
-	const icons = appList.reduce((acc, app, index) => {
-		if (!app.icon) return acc;
+	// Add function to send data to server
+	// const sendAppListToServer = async () => {
+	// 	try {
+	// 		const response = await fetch('http://10.0.0.98:3000/api', {
+	// 			method: 'POST',
+	// 			headers: {
+	// 				'Content-Type': 'application/json',
+	// 			},
+	// 			body: JSON.stringify({
+	// 				applications: appList.map(app => ({
+	// 					name: app.name,
+	// 					version: app.version,
+	// 					id: app.id.toString(), // Convert BigInt to string for JSON
+	// 					icon: typeof app.icon === 'string' ? app.icon : 'binary-data',
+	// 					author: app.author,
+	// 				})),
+	// 			}),
+	// 		});
 
-		const img = typeof app.icon === 'string'
-			? app.icon
-			: URL.createObjectURL(new Blob([app.icon]));
+	// 		const data = await response.json();
+	// 		console.log('Server response:', data);
+	// 	} catch (error) {
+	// 		console.error('Error sending data to server:', error);
+	// 	}
+	// };
 
-		const row = Math.floor(index / ICONS_PER_ROW);
-		const col = index % ICONS_PER_ROW;
-
-		const x = PADDING_X + (col * (ICON_SIZE + GAME_SPACE_X));
-
-		const TEXT_HEIGHT = 40;
-		const y = HEADER_HEIGHT + PADDING_Y + (row * (ICON_SIZE + TEXT_HEIGHT + GAME_SPACE_Y));
-
-		return [...acc, { img, name: app.name, x, y }];
-	}, [] as { img: string, name: string, x: number, y: number }[]);
+	// // Call the function when component mounts
+	// React.useEffect(() => {
+	// 	sendAppListToServer();
+	// }, []); // Empty dependency array means this runs once on mount
 
 	return (
 		<>
+			{/* Background */}
+			<Rect x={0} y={0} width={SCREEN_WIDTH} height={SCREEN_HEIGHT} fill="black" />
+
+			{/* List of Games */}
+			<AppGrid
+				applications={appList}
+			/>
+
+			{/* Header */}
+			<Rect x={0} y={0} width={SCREEN_WIDTH} height={HEADER_HEIGHT} fill="#1a1a1a" />
+			<Rect x={0} y={HEADER_HEIGHT} width={SCREEN_WIDTH} height={2} fill="gray" />
 			<Text
 				fontSize={26}
-				fill="red"
+				fill="white"
 				x={PADDING_X}
 				y={HEADER_HEIGHT / 2}
 				textBaseline="middle"
 			>
 				Smart Launcher
 			</Text>
-
-			<Rect x={0} y={HEADER_HEIGHT} width={SCREEN_WIDTH} height={2} fill="gray" />
-
-			{/* List of Games */}
-			{icons.map(({ img, name, x, y }, index) => (
-				<React.Fragment key={index}>
-					<Image
-						src={img}
-						width={ICON_SIZE}
-						height={ICON_SIZE}
-						x={x}
-						y={y}
-					/>
-
-					{/* App Name */}
-					<Text
-						x={x} // Center text below icon
-						y={y + ICON_SIZE + 10} // Position text below icon
-						fontSize={18}
-						fill="red"
-						textAlign="left"
-					>
-						{name}
-					</Text>
-				</React.Fragment>
-			))}
+			{/* <LastKey /> */}
+			<GamepadDirection />
 		</>
 	);
 }
 
 export default App;
+
+// Optional component for debugging
+export function LastKey() {
+	const lastInput = use$(lastInput$);
+	return <Text x={100} y={0} fill="white">{JSON.stringify(lastInput)}</Text>;
+}
+
+export function GamepadDirection() {
+	const direction = use$(direction$.down);
+	return <Text x={150} y={0} fill="white">Down: {JSON.stringify(direction)}</Text>;
+}

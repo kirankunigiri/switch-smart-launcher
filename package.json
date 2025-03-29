@@ -12,6 +12,9 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
+		"@legendapp/state": "^3.0.0-beta.30",
+		"@nx.js/constants": "^0.4.0",
+		"nintendo-switch-eshop": "^8.0.0",
 		"react": "^18.2.0"
 	},
 	"devDependencies": {
